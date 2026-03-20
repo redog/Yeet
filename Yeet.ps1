@@ -322,6 +322,14 @@ function Upload-BwSshKey {
         exit 1
     }
 
+    # Normalize line endings: remove \r and trim trailing blank lines, ensuring exactly one trailing \n
+    if (-not [string]::IsNullOrEmpty($privateKey)) {
+        $privateKey = ($privateKey -replace "`r", "").TrimEnd() + "`n"
+    }
+    if (-not [string]::IsNullOrEmpty($publicKey)) {
+        $publicKey = ($publicKey -replace "`r", "").TrimEnd() + "`n"
+    }
+
     # Check if key with same name exists
     try {
         $itemsJson = bw list items --raw
