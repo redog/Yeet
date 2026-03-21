@@ -229,6 +229,17 @@ copy_key() {
     public_key=$(ssh-keygen -y -f "$key_file")
   fi
 
+  # Normalize line endings: remove \r and trim trailing blank lines, ensuring exactly one trailing \n
+  if [ -n "$private_key" ]; then
+    private_key=$(printf "%s" "$private_key" | tr -d '\r')
+    private_key="${private_key}"$'\n'
+  fi
+
+  if [ -n "$public_key" ]; then
+    public_key=$(printf "%s" "$public_key" | tr -d '\r')
+    public_key="${public_key}"$'\n'
+  fi
+
   local fingerprint_source="$src_path"
   [ -f "$key_file" ] && fingerprint_source="$key_file"
   local key_fingerprint=$(ssh-keygen -lf "$fingerprint_source" | awk '{print $2}')
