@@ -218,7 +218,21 @@ copy_key() {
   fi
 
   if [ -f "$key_file" ]; then
-    private_key=$(cat "$key_file")
+    # Create a temporary file to process the private key
+    local temp_key=$(mktemp)
+    cp "$key_file" "$temp_key"
+    chmod 600 "$temp_key"
+
+    # Strip password and convert to PKCS8 format
+    ssh-keygen -p -m PKCS8 -f "$temp_key" -N "" > /dev/null
+    if [ $? -ne 0 ]; then
+      echo "Error: Failed to process private key. Ensure you have the correct passphrase if it is encrypted."
+      rm -f "$temp_key"
+      exit 1
+    fi
+
+    private_key=$(cat "$temp_key")
+    rm -f "$temp_key"
   fi
 
   if [ -z "$public_key" ] && [ -f "${key_file}.pub" ]; then
@@ -226,7 +240,12 @@ copy_key() {
   fi
 
   if [ -z "$public_key" ] && [ -n "$private_key" ]; then
-    public_key=$(ssh-keygen -y -f "$key_file")
+    # We use ssh-keygen on the processed private key, which requires a file.
+    local temp_pub_src=$(mktemp)
+    echo "$private_key" > "$temp_pub_src"
+    chmod 600 "$temp_pub_src"
+    public_key=$(ssh-keygen -y -f "$temp_pub_src")
+    rm -f "$temp_pub_src"
   fi
 
   # Normalize line endings: remove \r and trim trailing blank lines, ensuring exactly one trailing \n
