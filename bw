@@ -1,0 +1,14 @@
+#!/bin/bash
+if [ "$1" == "status" ]; then
+    echo '{"status":"unlocked"}'
+elif [ "$1" == "list" ]; then
+    echo '[]'
+elif [ "$1" == "get" ] && [ "$2" == "template" ]; then
+    echo '{}'
+elif [ "$1" == "encode" ]; then
+    cat
+elif [ "$1" == "create" ]; then
+    echo 'Success'
+else
+    echo "Unknown bw command: $@"
+fi

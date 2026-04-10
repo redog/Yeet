@@ -283,7 +283,17 @@ function Upload-BwSshKey {
         # Try to find private key (remove .pub)
         $privateKeyPath = $FilePath -replace '\.pub$', ''
         if (Test-Path $privateKeyPath) {
-             $privateKey = Get-Content -Path $privateKeyPath -Raw -Encoding UTF8
+             $tempKeyPath = [System.IO.Path]::GetTempFileName()
+             Copy-Item -Path $privateKeyPath -Destination $tempKeyPath -Force
+             Set-PrivateKeyPermissions -FilePath $tempKeyPath
+             ssh-keygen -p -m PKCS8 -f $tempKeyPath -N '""' 2>&1 | Out-Null
+             if ($LASTEXITCODE -ne 0) {
+                 Remove-Item -Path $tempKeyPath -Force
+                 Write-Error "Failed to process private key. Ensure you have the correct passphrase if it is encrypted."
+                 exit 1
+             }
+             $privateKey = Get-Content -Path $tempKeyPath -Raw -Encoding UTF8
+             Remove-Item -Path $tempKeyPath -Force
              $publicKey = $publicKeyContent
         } else {
              Write-Error "Provided file appears to be a public key, but the corresponding private key '$privateKeyPath' was not found."
@@ -291,7 +301,16 @@ function Upload-BwSshKey {
         }
     } else {
         # Assume it's a private key
-        $privateKey = Get-Content -Path $fullPath -Raw -Encoding UTF8
+        $tempKeyPath = [System.IO.Path]::GetTempFileName()
+        Copy-Item -Path $fullPath -Destination $tempKeyPath -Force
+        Set-PrivateKeyPermissions -FilePath $tempKeyPath
+        ssh-keygen -p -m PKCS8 -f $tempKeyPath -N '""' 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            Remove-Item -Path $tempKeyPath -Force
+            Write-Error "Failed to process private key. Ensure you have the correct passphrase if it is encrypted."
+            exit 1
+        }
+        $privateKey = Get-Content -Path $tempKeyPath -Raw -Encoding UTF8
 
         # Look for public key (.pub)
         $publicKeyPath = "$FilePath.pub"
@@ -302,15 +321,17 @@ function Upload-BwSshKey {
             Write-Verbose "Public key file not found. Attempting to derive from private key..."
             try {
                  # ssh-keygen -y -f <private_key_file> outputs the public key to stdout
-                 $publicKey = ssh-keygen -y -f $FilePath 2>&1
+                 $publicKey = ssh-keygen -y -f $tempKeyPath 2>&1
                  if ($LASTEXITCODE -ne 0) {
                      throw "ssh-keygen failed"
                  }
             } catch {
                 Write-Error "Could not derive public key from '$FilePath'. Is it a valid private key? Error: $($_.Exception.Message)"
+                Remove-Item -Path $tempKeyPath -Force
                 exit 1
             }
         }
+        Remove-Item -Path $tempKeyPath -Force
     }
 
     if ([string]::IsNullOrWhiteSpace($privateKey)) {
