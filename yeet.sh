@@ -124,6 +124,15 @@ get_key() {
     echo "$private_key" > "$key_path"
     chmod 600 "$key_path"
     echo "Private key '$key_name' saved to '$key_path'"
+    read -r -p "Encrypt the private key with a passphrase? (y/n): " encrypt_confirm
+    if [[ "$encrypt_confirm" =~ ^[Yy]$ ]]; then
+        ssh-keygen -p -f "$key_path"
+        if [ $? -eq 0 ]; then
+            echo "Private key encrypted with passphrase."
+        else
+            echo "Warning: Failed to encrypt private key."
+        fi
+    fi
     read -r -p "Add public key to ~/.ssh/authorized_keys? (y/n): " confirm
     if [[ "$confirm" =~ ^[Yy]$ ]]; then
         echo "$public_key" >> "$HOME/.ssh/authorized_keys"
@@ -178,6 +187,15 @@ create_key() {
 
   chmod 600 "$key_path"
   echo "SSH key '$key_name' created and saved to '$key_path' and Bitwarden."
+  read -r -p "Encrypt the local private key with a passphrase? (y/n): " encrypt_confirm
+  if [[ "$encrypt_confirm" =~ ^[Yy]$ ]]; then
+      ssh-keygen -p -f "$key_path"
+      if [ $? -eq 0 ]; then
+          echo "Private key encrypted with passphrase."
+      else
+          echo "Warning: Failed to encrypt private key."
+      fi
+  fi
 
   read -r -p "Add public key to ~/.ssh/authorized_keys? (y/n): " confirm
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
