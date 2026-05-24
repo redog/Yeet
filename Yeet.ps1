@@ -228,6 +228,17 @@ function Get-BwSshKey {
         Set-PrivateKeyPermissions -FilePath $keyPath
         Write-Host "Private key '$KeyNameToGet' saved to '$keyPath'"
 
+        # Offer to re-encrypt the local private key with a passphrase
+        $encryptConfirm = Read-Host "Encrypt the private key with a passphrase? (y/n)"
+        if ($encryptConfirm -eq 'y') {
+            ssh-keygen -p -f $keyPath
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Private key encrypted with passphrase."
+            } else {
+                Write-Warning "Failed to encrypt private key."
+            }
+        }
+
         # Ask to add public key
         $authorizedKeysPath = Join-Path $sshPath "authorized_keys"
         $confirm = Read-Host "Add public key to '$authorizedKeysPath'? (y/n)"
@@ -491,6 +502,17 @@ function New-BwSshKey {
         }
 
         Write-Host "SSH key '$keyNameToCreate' created locally at '$keyPath' and saved to Bitwarden."
+
+        # Offer to encrypt the local private key with a passphrase
+        $encryptConfirm = Read-Host "Encrypt the local private key with a passphrase? (y/n)"
+        if ($encryptConfirm -eq 'y') {
+            ssh-keygen -p -f $keyPath
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Private key encrypted with passphrase."
+            } else {
+                Write-Warning "Failed to encrypt private key."
+            }
+        }
 
         # Ask to add public key
         $authorizedKeysPath = Join-Path $sshPath "authorized_keys"
