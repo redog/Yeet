@@ -106,21 +106,30 @@ function Sync-BwVault {
     }
 }
 
-# Set appropriate file permissions (Windows approximation of chmod 600)
+# Set appropriate file permissions (chmod 600 on Unix-like systems, ACL equivalent on Windows)
 function Set-PrivateKeyPermissions {
     param(
         [Parameter(Mandatory = $true)]
         [string]$FilePath
     )
     try {
-        # Reset ACLs to inherit from parent initially to clear tricky ones
-        icacls $FilePath /reset /T /C /Q | Out-Null
-        # Remove inheritance
-        icacls $FilePath /inheritance:r /T /C /Q | Out-Null
-         # Grant current user Full Control
-        $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-        icacls $FilePath /grant "$($currentUser):F" /T /C /Q | Out-Null
-        Write-Verbose "Set permissions for '$FilePath' (Removed inheritance, granted '$currentUser' Full Control)."
+        if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+            # Reset ACLs to inherit from parent initially to clear tricky ones
+            icacls $FilePath /reset /T /C /Q | Out-Null
+            # Remove inheritance
+            icacls $FilePath /inheritance:r /T /C /Q | Out-Null
+             # Grant current user Full Control
+            $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+            icacls $FilePath /grant "$($currentUser):F" /T /C /Q | Out-Null
+            Write-Verbose "Set permissions for '$FilePath' (Removed inheritance, granted '$currentUser' Full Control)."
+        }
+        else {
+            chmod 600 $FilePath
+            if ($LASTEXITCODE -ne 0) {
+                throw "chmod 600 exited with code $LASTEXITCODE."
+            }
+            Write-Verbose "Set permissions for '$FilePath' (chmod 600)."
+        }
     }
     catch {
         Write-Warning "Failed to set permissions on '$FilePath'. Manual adjustment might be needed. Error: $($_.Exception.Message)"
