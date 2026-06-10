@@ -96,6 +96,16 @@ function Test-IsBitwardenLoggedIn {
     }
 }
 
+# Sync the local Bitwarden CLI cache with the server.
+# 'bw list items' reads from a local cache that only updates on 'bw sync', so
+# keys added or renamed from other devices/apps never appear without this.
+function Sync-BwVault {
+    $syncOutput = bw sync 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "Failed to sync Bitwarden vault; results may be stale. Output: $syncOutput"
+    }
+}
+
 # Set appropriate file permissions (Windows approximation of chmod 600)
 function Set-PrivateKeyPermissions {
     param(
@@ -151,6 +161,7 @@ function Get-SshFingerprint {
 # List SSH Keys from Bitwarden
 function Get-BwSshKeyList {
     if (-not (Test-IsBitwardenLoggedIn)) { exit 1 }
+    Sync-BwVault
 
     Write-Host "Available SSH Keys in Bitwarden:"
     Write-Host "--------------------------------"
@@ -184,6 +195,7 @@ function Get-BwSshKey {
     )
 
     if (-not (Test-IsBitwardenLoggedIn)) { exit 1 }
+    Sync-BwVault
 
     $sshPath = Join-Path $HOME ".ssh"
     if (-not (Test-Path $sshPath -PathType Container)) {
@@ -276,6 +288,7 @@ function Upload-BwSshKey {
     )
 
     if (-not (Test-IsBitwardenLoggedIn)) { exit 1 }
+    Sync-BwVault
 
     if (-not (Test-Path $FilePath)) {
         Write-Error "The file '$FilePath' does not exist."

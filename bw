@@ -1,6 +1,8 @@
 #!/bin/bash
 if [ "$1" == "status" ]; then
     echo '{"status":"unlocked"}'
+elif [ "$1" == "sync" ]; then
+    echo 'Syncing complete.'
 elif [ "$1" == "list" ]; then
     echo '[]'
 elif [ "$1" == "get" ] && [ "$2" == "template" ]; then

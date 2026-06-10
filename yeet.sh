@@ -4,11 +4,20 @@ bw_is_logged_in() {
   bw status | grep -q '"status":"unlocked"'
 }
 
+# 'bw list items' reads from a local cache that only updates on 'bw sync', so
+# keys added or renamed from other devices/apps never appear without this.
+bw_sync() {
+  if ! bw sync > /dev/null 2>&1; then
+    echo "Warning: failed to sync Bitwarden vault; results may be stale." >&2
+  fi
+}
+
 list_keys() {
     if ! bw_is_logged_in; then
         echo "Error: Bitwarden is not logged in."
         return 1
     fi
+    bw_sync
 
     echo "Available SSH Keys in Bitwarden:"
     echo "--------------------------------"
@@ -103,6 +112,7 @@ get_key() {
         echo "Usage: $0 get <key_name>"
         exit 1
     fi
+    bw_sync
     local item_id=$(bw list items | jq -r --arg key_name "$key_name" '.[] | select(.type == 5 and .name == $key_name) | .id')
 
     if [ -z "$item_id" ]; then
@@ -281,6 +291,7 @@ copy_key() {
   [ -f "$key_file" ] && fingerprint_source="$key_file"
   local key_fingerprint=$(ssh-keygen -lf "$fingerprint_source" | awk '{print $2}')
 
+  bw_sync
   local existing=$(bw list items | jq -r --arg n "$new_name" '.[] | select(.type == 5 and .name == $n) | .id')
   if [ -n "$existing" ]; then
     echo "Error: A key named '$new_name' already exists in Bitwarden."
